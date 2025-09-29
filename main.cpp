@@ -1,10 +1,16 @@
-#include <iostream>
-#include <vector>
-#include <fstream>
-#include <locale>
-#include <memory> // for unique_ptr
+#include "CipherLibrary.hpp"
 
-using namespace std;
+#include <iostream>
+#include <fstream> // операции с файлами
+#include <locale>
+
+#include <cstdlib>
+#include <ctime>
+
+// using namespace std;
+
+using std::cout;
+using std::endl;
 
 std::vector<unsigned char> readBinaryFile(const std::string filename) {
     // Open the file in binary mode and seek to the end to determine its size
@@ -38,96 +44,14 @@ bool writeBinaryFile(const std::string filename, string str){
     return true;
 }
 
-struct CodeKeyPair
-{
-    std::string code;
-    std::string key;
-};
-
-class ScramblerMethod
-{
-protected:
-    std::vector<unsigned char> getBytes(const std::string& str) {
-        return std::vector<unsigned char>(str.begin(), str.end());
-    }
-    
-public:
-    virtual std::string encode(const std::string& message, const std::string& key) = 0;
-    virtual CodeKeyPair encode(const std::string& message) = 0;
-    virtual std::string decode(const std::string& code, const std::string& key) = 0;
-    virtual ~ScramblerMethod() = default;
-};
-
-class Vernam : public ScramblerMethod
-{
-private:
-    std::string generateKey(int messageLength) {
-        std::string key;
-        for (int i = 0; i < messageLength; i++) {
-            // Генерируем случайный байт (включая кириллицу)
-            key.push_back(rand() % 256);
-        }
-        return key;
-    }
-
-public:
-    std::string encode(const std::string& message, const std::string& key) override {
-        std::vector <unsigned char> message_bytes = getBytes(message);
-        std::vector <unsigned char> key_bytes = getBytes(key);
-        if (key_bytes.size() < message_bytes.size()) {
-            throw std::runtime_error("Key is too short for the message");
-        }
-        std::string code;
-        for (int i = 0; i < message_bytes.size(); i++) {
-            code.push_back(message_bytes[i] ^ key_bytes[i]);
-        }
-        return code;
-    }
-    CodeKeyPair encode(const std::string& message) override {
-        std::vector <unsigned char> messageBytes = getBytes(message);
-        std::string key = generateKey(messageBytes.size());
-        CodeKeyPair result;
-        result.key = key;
-        result.code = encode(message, key);
-        return result;
-    }
-
-    std::string decode(const std::string& code, const std::string& key) override {
-        return encode(code, key);
-    }
-};
-
-class Scrambler
-{
-private:
-    std::unique_ptr<ScramblerMethod> method;
-public:
-    Scrambler() : method(std::make_unique<Vernam>()) {}
-    
-    void setMethod(std::unique_ptr<ScramblerMethod> newMethod) {
-        method = std::move(newMethod);
-    }
-
-    std::string encode(const std::string& message, const std::string& key) {
-        return method->encode(message, key);
-    }
-    CodeKeyPair encode(const std::string& message) {
-        return method->encode(message);
-    }
-
-    std::string decode(const std::string& code, const std::string& key) {
-        return method->decode(code, key);
-    }
-};
-
 int main() {
     srand(time(0));
     setlocale(LC_ALL, "Russian");
 
-    Scrambler scrambler;
+    Scrambler scrambler(std::make_unique<Vernam>());
 
     while (true){
-        cout << endl << "=========================" << endl;
+        std::cout << endl << "=========================" << endl;
         
         char choice;
         std::cout << "Выберите действие:" << std::endl;
@@ -153,14 +77,14 @@ int main() {
                 }
                 input.close();
 
-                CodeKeyPair pair = scrambler.encode(message_from_file);
+                pair <string, string> pair = scrambler.encode(message_from_file);
 
                 std::cout << "Исходное сообщение: " << message_from_file << std::endl;
-                std::cout << "Сгенерированный ключ: " << pair.key << std::endl;
-                std::cout << "Зашифрованное сообщение: " << pair.code << std::endl;
+                std::cout << "Сгенерированный ключ: " << pair.second << std::endl;
+                std::cout << "Зашифрованное сообщение: " << pair.first << std::endl;
 
-                writeBinaryFile("codes.txt", pair.code);
-                writeBinaryFile("keys.txt", pair.key);
+                writeBinaryFile("codes.txt", pair.first);
+                writeBinaryFile("keys.txt", pair.second);
 
                 std::cout << "зашифровка закончена" << std::endl;
                 break;
@@ -205,10 +129,10 @@ int main() {
                 }
                 input.close();
 
-                CodeKeyPair pair = scrambler.encode(message_from_file);
+                pair <string, string> pair = scrambler.encode(message_from_file);
 
-                writeBinaryFile("codes.txt", pair.code);
-                writeBinaryFile("keys.txt", pair.key);
+                writeBinaryFile("codes.txt", pair.first);
+                writeBinaryFile("keys.txt", pair.second);
 
                 std::cout << "зашифровка закончена" << std::endl;
 
@@ -237,7 +161,6 @@ int main() {
                 } else{
                     cout << "DIFFERENT!" << endl;
                 }
-
                 break;
             }
             case '9':
@@ -246,6 +169,5 @@ int main() {
             }
         }
     }
-
     return 0;
 }
