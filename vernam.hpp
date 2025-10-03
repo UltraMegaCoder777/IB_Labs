@@ -1,14 +1,11 @@
 #pragma once
 #include "ScramblerMethod.hpp"
 
-#include <cstdlib>
-#include <ctime>
-
 class Vernam : public ScramblerMethod
 {
 private:
-    std::string generateKey(int messageLength) {
-        std::string key;
+    string generateKey(int messageLength) {
+        string key;
         for (int i = 0; i < messageLength; i++) {
             // Генерируем случайный байт (включая кириллицу)
             key.push_back(rand() % 256);
@@ -17,27 +14,27 @@ private:
     }
 
 public:
-    std::string encode(const std::string& message, const std::string& key) override {
-        std::vector <unsigned char> message_bytes = getBytes(message);
-        std::vector <unsigned char> key_bytes = getBytes(key);
+    string encode(const string& message, const string& key) override {
+        vector <uint8_t> message_bytes = getBytes(message);
+        vector <uint8_t> key_bytes = getBytes(key);
         if (key_bytes.size() < message_bytes.size()) {
-            throw std::runtime_error("Key is too short for the message");
+            throw runtime_error("Key is too short for the message");
         }
-        std::string code;
+        string code;
         for (int i = 0; i < message_bytes.size(); i++) {
             code.push_back(message_bytes[i] ^ key_bytes[i]);
         }
         return code;
     }
-    pair <string, string> encode(const std::string& message) override {
-        std::vector <unsigned char> messageBytes = getBytes(message);
-        std::string key = generateKey(messageBytes.size());
-        std::string code = encode(message, key);
+    pair <string, string> encode(const string& message) override {
+        vector <uint8_t> messageBytes = getBytes(message);
+        string key = generateKey(messageBytes.size());
+        string code = encode(message, key);
         pair result = make_pair(code, key);
         return result;
     }
 
-    std::string decode(const std::string& code, const std::string& key) override {
+    string decode(const string& code, const string& key) override {
         return encode(code, key);
     }
 };
